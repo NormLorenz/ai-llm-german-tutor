@@ -24,8 +24,8 @@ google.generativeai.configure()
 system_message = "This assistant helps users practice conversational German in a friendly, supportive way. \
 It adapts to the user's level, offers corrections when asked, and keeps the tone light and encouraging. \
 The assistant may switch between English and German as needed. Please start the conversation by asking the \
-user a question in German. If the user says 'exit', end the conversation and say goodbye to the user in German. \
-Please use CEFR level A1 vocabulary and grammar. Also please show responses in both German and English."
+user a question in German. If the user says 'exit', end the conversation and say goodbye to the user in German."
+
 
 # Default model
 MODEL = "gpt-4o-mini"
@@ -36,25 +36,28 @@ def main() -> None:
     ### High level entry point ###
 
     verbose_option = gr.Checkbox(
-        label="Check if you wish to have English added to the response.")
+        label="Check if you wish to have English added to the response:")
+
+    cefr_level = gr.Radio(
+        ["A1", "A2", "B1", "B2", "C1", "C2"],
+        label="Choose a language proficiency CERF level:", value="A1"
+    )
 
     model_option = gr.Radio(
         ["gpt-4o-mini", "claude-3-5-haiku-latest",
             "gemini-1.5-flash", "gemini-2.5-flash-lite"],
-        label="Choose an AI model:", value="gpt-4o-mini"
+        label="Choose an AI model:", value=MODEL
     )
 
-    description = "Dieser Assistent hilft Nutzern, Konversationsdeutsch auf freundliche und unterstützende \
-    Weise zu üben. Er passt sich dem Niveau des Nutzers an, bietet auf Anfrage Korrekturen an und sorgt für \
-    einen lockeren und ermutigenden Ton. This assistant helps users practice conversational German in a friendly, \
+    description = "This assistant helps users practice conversational German in a friendly, \
     supportive way. It adapts to the user's level, offers corrections when asked, and keeps \
     the tone light and encouraging."
 
-    gr.ChatInterface(fn=chat, additional_inputs=[verbose_option, model_option], type="messages",
+    gr.ChatInterface(fn=chat, additional_inputs=[verbose_option, cefr_level, model_option], type="messages",
                      title="Meine Deutschlehrerin", description=description).launch(inbrowser=True)
 
 
-def chat(message, history, verbose_option, model_option):
+def chat(message, history, verbose_option: bool, cefr_level: str,  model_option: str):
 
     # Check if the user wants to exit
     if message.lower().strip() == 'bye' or message.lower().strip() == 'tschüss':
@@ -63,14 +66,16 @@ def chat(message, history, verbose_option, model_option):
         gr.close_all()
         exit()
 
-    print(model_option)
-    print(verbose_option)
+    _system_message: str = system_message
 
-    _system_message = system_message
+    # Add specific instructions based upon the verbose checkbox
+    if verbose_option:
+        _system_message += " Also please show responses in both German and English."
 
-    # Add specific instructions based on user input
-    if 'belt' in message:
-        _system_message += " The store does not sell belts; if you are asked for belts, be sure to point out other items on sale."
+    # Add specific instructions based upon the CEFR level
+    _system_message += f" Please use up to the CEFR level {cefr_level} for vocabulary and grammar."
+
+    print(_system_message)
 
     # Prepare messages for OpenAI
     messages = [{"role": "system", "content": _system_message}] + \
