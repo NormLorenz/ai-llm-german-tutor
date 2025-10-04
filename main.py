@@ -44,22 +44,24 @@ def main() -> None:
         label="Choose an AI model:", value="gpt-4o-mini"
     )
 
-    description = "This assistant helps users practice conversational German in a friendly, \
-    supportive way. It adapts to the user's level, offers corrections when asked, and keeps " \
-    "the tone light and encouraging."
+    description = "Dieser Assistent hilft Nutzern, Konversationsdeutsch auf freundliche und unterstützende \
+    Weise zu üben. Er passt sich dem Niveau des Nutzers an, bietet auf Anfrage Korrekturen an und sorgt für \
+    einen lockeren und ermutigenden Ton. This assistant helps users practice conversational German in a friendly, \
+    supportive way. It adapts to the user's level, offers corrections when asked, and keeps \
+    the tone light and encouraging."
 
     gr.ChatInterface(fn=chat, additional_inputs=[verbose_option, model_option], type="messages",
-                     title="My German Tutor", description=description).launch(inbrowser=True)
+                     title="Meine Deutschlehrerin", description=description).launch(inbrowser=True)
 
 
 def chat(message, history, verbose_option, model_option):
 
     # Check if the user wants to exit
-    # if message.lower().strip() == 'exit':
+    if message.lower().strip() == 'bye' or message.lower().strip() == 'tschüss':
 
-    #     # Close the browser window and stop the application
-    #     gr.close_all()
-    #     exit()
+        # Close the browser window and stop the application - BROKEN
+        gr.close_all()
+        exit()
 
     print(model_option)
     print(verbose_option)
