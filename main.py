@@ -33,17 +33,23 @@ MODEL = "gpt-4o-mini"
 
 def main() -> None:
 
+    ### High level entry point ###
+
     verbose_option = gr.Checkbox(
         label="Check if you wish to have English added to the response.")
 
     model_option = gr.Radio(
         ["gpt-4o-mini", "claude-3-5-haiku-latest",
             "gemini-1.5-flash", "gemini-2.5-flash-lite"],
-        label="Choose an AI model:"
+        label="Choose an AI model:", value="gpt-4o-mini"
     )
-    ### High level entry point ###
+
+    description = "This assistant helps users practice conversational German in a friendly, \
+    supportive way. It adapts to the user's level, offers corrections when asked, and keeps " \
+    "the tone light and encouraging."
+
     gr.ChatInterface(fn=chat, additional_inputs=[verbose_option, model_option], type="messages",
-                     title="My German Tutor").launch(inbrowser=True)
+                     title="My German Tutor", description=description).launch(inbrowser=True)
 
 
 def chat(message, history, verbose_option, model_option):
@@ -78,27 +84,22 @@ def chat(message, history, verbose_option, model_option):
         response += chunk.choices[0].delta.content or ''
         yield response
 
-# # Create the radio button component
-# radio_options = gr.Radio(
-#     ["Option A", "Option B", "Option C"],
-#     label="Choose an option:"
-# )
 
-# def select_model(company_name: str, url: str, model: str):
-#     yield ""
-#     prompt = f"Please generate a company brochure for {company_name}. Here is their landing page:\n"
-#     prompt += Website(url).get_contents()
-#     if model == "gpt-4o-mini":
-#         result = call_gpt(prompt, model)
-#     elif model == "claude-3-5-haiku-latest":
-#         result = call_claude(prompt, model)
-#     elif model == "gemini-1.5-flash":
-#         result = call_gemini(prompt, model)
-#     elif model == "gemini-2.5-flash-lite":
-#         result = call_gemini(prompt, model)
-#     else:
-#         raise ValueError("Unknown model")
-#     yield from result
+def select_model(company_name: str, url: str, model: str):
+    yield ""
+    prompt = f"Please generate a company brochure for {company_name}. Here is their landing page:\n"
+    # prompt += Website(url).get_contents()
+    if model == "gpt-4o-mini":
+        result = call_gpt(prompt, model)
+    elif model == "claude-3-5-haiku-latest":
+        result = call_claude(prompt, model)
+    elif model == "gemini-1.5-flash":
+        result = call_gemini(prompt, model)
+    elif model == "gemini-2.5-flash-lite":
+        result = call_gemini(prompt, model)
+    else:
+        raise ValueError("Unknown model")
+    yield from result
 
 
 def call_gpt(prompt: str, model: str):
