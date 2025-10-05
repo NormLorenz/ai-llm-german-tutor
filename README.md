@@ -1,11 +1,11 @@
 # ai-llm-german-tutor
 German Tutor
 
-TODO: Update this document with comprehensive documentation of the app.
-TODO: Hook in the other models and hook it to the radio buttons
-TODO: Use defaults for each radio buttons
-TODO: Review the system_prompt and the description displayed
-TODO: Entertain using topics (cooking, hiking, etc.) to construct the consversations (maybe using another text field)
+. TODO: Update this document with comprehensive documentation of the app.
+. TODO: Hook in the other models and hook it to the radio buttons
+. TODO: Use defaults for each radio buttons
+. TODO: Review the system_prompt and the description displayed
+. TODO: Entertain using topics (cooking, hiking, etc.) to construct the consversations (maybe using another text field)
 
 Maybe allow a number of topics like getting ready for work or hiking in the mountains, etc.
 
