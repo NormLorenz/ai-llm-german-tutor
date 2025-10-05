@@ -9,6 +9,7 @@ import gradio as gr
 # Load environment variables in a file called .env
 load_dotenv(override=True)
 
+# Get API keys from environment variables
 openai_api_key = os.getenv('OPENAI_API_KEY')
 anthropic_api_key = os.getenv('ANTHROPIC_API_KEY')
 google_api_key = os.getenv('GOOGLE_API_KEY')
@@ -19,16 +20,30 @@ openai = OpenAI()
 claude = anthropic.Anthropic()
 google.generativeai.configure()
 
+# Define the CEFR levels and descriptions
+level_options = ["A1 (Beginner)", "A2 (Elementary)",
+                 "B1 (Intermediate)", "B2 (Upper Intermediate)", "C1 (Advanced)"]
+
+# Descriptions for each CEFR level
+level_descriptions = {
+    "A1 (Beginner)": "Basic phrases and everyday expressions. Simple personal details.",
+    "A2 (Elementary)": "Familiar expressions for basic routines. Simple communication about immediate needs.",
+    "B1 (Intermediate)": "Main points on familiar matters. Simple connected text on familiar topics.",
+    "B2 (Upper Intermediate)": "Understanding complex text. Spontaneous interaction with native speakers.",
+    "C1 (Advanced)": "Understanding demanding, longer texts. Expressing ideas fluently and spontaneously."
+}
 
 # A generic system message
 system_message = "This assistant helps users practice conversational German in a friendly, supportive way. \
 It adapts to the user's level, offers corrections when asked, and keeps the tone light and encouraging. \
 The assistant may switch between English and German as needed. Please start the conversation by asking the \
-user a question in German. If the user says 'exit', end the conversation and say goodbye to the user in German."
+user a question in German. If the user says 'bye' or 'tschüss', end the conversation and say goodbye to the \
+user in German."
 
-
-# Default model
-MODEL = "gpt-4o-mini"
+# Defaults
+MODEL_DEFAULT: str = "gpt-4o-mini"
+PROFICIENCY_DEFAULT: str = "A1"
+VERBOSE_DEFAULT: bool = True
 
 
 def main() -> None:
@@ -36,28 +51,28 @@ def main() -> None:
     ### High level entry point ###
 
     verbose_option = gr.Checkbox(
-        label="Check if you wish to have English added to the response:")
+        label="Check if you wish to have English added to the response:", value=VERBOSE_DEFAULT)
 
-    cefr_level = gr.Radio(
+    proficiency_option = gr.Radio(
         ["A1", "A2", "B1", "B2", "C1", "C2"],
-        label="Choose a language proficiency CERF level:", value="A1"
+        label="Choose a language proficiency CERF level:", value=PROFICIENCY_DEFAULT
     )
 
     model_option = gr.Radio(
         ["gpt-4o-mini", "claude-3-5-haiku-latest",
             "gemini-1.5-flash", "gemini-2.5-flash-lite"],
-        label="Choose an AI model:", value=MODEL
+        label="Choose an AI model:", value=MODEL_DEFAULT
     )
 
     description = "This assistant helps users practice conversational German in a friendly, \
     supportive way. It adapts to the user's level, offers corrections when asked, and keeps \
     the tone light and encouraging."
 
-    gr.ChatInterface(fn=chat, additional_inputs=[verbose_option, cefr_level, model_option], type="messages",
-                     title="Meine Deutschlehrerin", description=description).launch(inbrowser=True)
+    gr.ChatInterface(fn=chat, additional_inputs=[verbose_option, proficiency_option, model_option], type="messages",
+                     title="My German Tutor", description=description).launch(inbrowser=True, share=False)
 
 
-def chat(message, history, verbose_option: bool, cefr_level: str,  model_option: str):
+def chat(message, history, verbose_option: bool, proficiency_option: str,  model_option: str):
 
     # Check if the user wants to exit
     if message.lower().strip() == 'bye' or message.lower().strip() == 'tschüss':
@@ -73,9 +88,7 @@ def chat(message, history, verbose_option: bool, cefr_level: str,  model_option:
         _system_message += " Also please show responses in both German and English."
 
     # Add specific instructions based upon the CEFR level
-    _system_message += f" Please use up to the CEFR level {cefr_level} for vocabulary and grammar."
-
-    print(_system_message)
+    _system_message += f" Please use the CEFR level {proficiency_option} for vocabulary and grammar."
 
     # Prepare messages for OpenAI
     messages = [{"role": "system", "content": _system_message}] + \
@@ -83,7 +96,7 @@ def chat(message, history, verbose_option: bool, cefr_level: str,  model_option:
 
     # Call the OpenAI API with streaming
     stream = openai.chat.completions.create(
-        model=MODEL, messages=messages, stream=True)
+        model=model_option, messages=messages, stream=True)
 
     # Stream the response back to the user
     response = ""
