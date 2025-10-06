@@ -125,14 +125,12 @@ Was möchtest du bestellen?
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
+## Notes
 
-* TODO: Update this document with comprehensive documentation of the app.
-* TODO: Hook in the other models and hook it to the radio buttons
 * TODO: Review the system_prompt and the description displayed
 * TODO: Entertain using topics (cooking, hiking, etc.) to construct the consversations (maybe using another text field)
 * TODO: Provide a mechanism to dump the conversation to a markup file.
 * TODO: Convert models to enums
-* Maybe allow a number of topics like getting ready for work or hiking in the mountains, etc.
 
 I need some help creating a system message that will be used with an openai application. Your job is to ask for a topic and then create a simple dialog between yourself and me.
 
