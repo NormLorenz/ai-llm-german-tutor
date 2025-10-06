@@ -62,9 +62,8 @@ def main() -> None:
     )
 
     model_option = gr.Radio(
-
         ["gpt-4o-mini", "claude-3-5-haiku-latest",
-            "gemini-1.5-flash", "gemini-2.5-flash-lite"],
+            "gemini-2.5-flash", "gemini-2.5-flash-lite"],
         label="Choose an AI model:", value=MODEL_DEFAULT
     )
 
@@ -110,9 +109,17 @@ def chat(user: str, history: list[tuple[str, str]], verbose_option: bool, profic
     elif model_option == "claude-3-5-haiku-latest":
         result = call_anthropic(system, history, user, model_option)
         yield from result
+    elif model_option == "gemini-2.5-flash":
+        result = call_google(system, history, user, model_option)
+        yield from result
+    elif model_option == "gemini-2.5-flash-lite":
+        result = call_google(system, history, user, model_option)
+        yield from result
+    else:
+        raise ValueError("Unknown model")
 
 
-def call_openai(system: str, history, user: str, model: str):
+def call_openai(system: str, history: list[tuple[str, str]], user: str, model: str) -> Generator[str, None, None]:
 
     # Initial yield to avoid Gradio timeout
     yield ""
@@ -160,7 +167,7 @@ def call_anthropic(system: str, history: list[tuple[str, str]], user: str, model
             yield response
 
 
-def call_google(prompt: str, model: str):
+def call_google(system: str, history: list[tuple[str, str]], user: str, model: str) -> Generator[str, None, None]:
 
     # Initial yield to avoid Gradio timeout
     yield ""
@@ -168,14 +175,22 @@ def call_google(prompt: str, model: str):
     # Call the Gemini API with streaming
     gemini = google.generativeai.GenerativeModel(
         model_name=model,
-        system_instruction=system_message
+        system_instruction=system
     )
+    
+    # call with user message
+    stream = gemini.generate_content(user, stream=True)
 
     # Stream the response back to the user
     response = ""
-    for response in gemini.generate_content(prompt, stream=True):
-        response += response.text or ""
-        yield response
+    for chunk in stream:    
+        try:
+            part = chunk.text
+            if part:
+                response += part
+                yield response   
+        except Exception as e:
+            print("Chunk error:", e)
 
 
 if __name__ == "__main__":
