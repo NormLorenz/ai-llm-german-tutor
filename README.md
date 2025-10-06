@@ -6,6 +6,7 @@ German Tutor
 * TODO: Review the system_prompt and the description displayed
 * TODO: Entertain using topics (cooking, hiking, etc.) to construct the consversations (maybe using another text field)
 * TODO: Provide a mechanism to dump the conversation to a markup file.
+* TODO: Convert models to enums
 
 * Maybe allow a number of topics like getting ready for work or hiking in the mountains, etc.
 

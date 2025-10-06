@@ -1,4 +1,6 @@
+import enum
 import os
+from typing import Generator
 from dotenv import load_dotenv
 from openai import OpenAI
 import anthropic
@@ -22,7 +24,7 @@ google.generativeai.configure()
 
 # Define the CEFR levels and descriptions
 level_options = ["A1 (Beginner)", "A2 (Elementary)",
-                 "B1 (Intermediate)", "B2 (Upper Intermediate)", "C1 (Advanced)"]
+                 "B1 (Intermediate)", "B2 (Upper Intermediate)", "C1 (Advanced)", "C2 (Proficient)"]
 
 # Descriptions for each CEFR level
 level_descriptions = {
@@ -30,7 +32,8 @@ level_descriptions = {
     "A2 (Elementary)": "Familiar expressions for basic routines. Simple communication about immediate needs.",
     "B1 (Intermediate)": "Main points on familiar matters. Simple connected text on familiar topics.",
     "B2 (Upper Intermediate)": "Understanding complex text. Spontaneous interaction with native speakers.",
-    "C1 (Advanced)": "Understanding demanding, longer texts. Expressing ideas fluently and spontaneously."
+    "C1 (Advanced)": "Understanding demanding, longer texts. Expressing ideas fluently and spontaneously.",
+    "C2 (Proficient})": "Understand almost everything heard or read. Can speak in complex situations."
 }
 
 # A generic system message
@@ -38,7 +41,8 @@ system_message = "This assistant helps users practice conversational German in a
 It adapts to the user's level, offers corrections when asked, and keeps the tone light and encouraging. \
 The assistant may switch between English and German as needed. Please start the conversation by asking the \
 user a question in German. If the user says 'bye' or 'tschüss', end the conversation and say goodbye to the \
-user in German."
+user in German. Also correct any mistakes the user makes."
+
 
 # Defaults
 MODEL_DEFAULT: str = "gpt-4o-mini"
@@ -49,7 +53,6 @@ VERBOSE_DEFAULT: bool = True
 def main() -> None:
 
     ### High level entry point ###
-
     verbose_option = gr.Checkbox(
         label="Check if you wish to have English added to the response:", value=VERBOSE_DEFAULT)
 
@@ -59,75 +62,64 @@ def main() -> None:
     )
 
     model_option = gr.Radio(
+
         ["gpt-4o-mini", "claude-3-5-haiku-latest",
             "gemini-1.5-flash", "gemini-2.5-flash-lite"],
         label="Choose an AI model:", value=MODEL_DEFAULT
     )
 
-    description = "This assistant helps users practice conversational German in a friendly, \
+    description = "> This assistant helps users practice conversational German in a friendly, \
     supportive way. It adapts to the user's level, offers corrections when asked, and keeps \
     the tone light and encouraging."
+
+    examples = [
+        "What is the meaning of life?",
+        "Fun things to do in Sandpoint, Idaho?",
+        "Interpret 'The Road Not Taken' by Robert Frost"
+    ]
 
     gr.ChatInterface(fn=chat, additional_inputs=[verbose_option, proficiency_option, model_option], type="messages",
                      title="My German Tutor", description=description).launch(inbrowser=True, share=False)
 
 
-def chat(message, history, verbose_option: bool, proficiency_option: str,  model_option: str):
+def chat(user: str, history: list[tuple[str, str]], verbose_option: bool, proficiency_option: str, model_option: str) -> Generator[str, None, None]:
+
+    # Initial yield to avoid Gradio timeout
+    yield ""
 
     # Check if the user wants to exit
-    if message.lower().strip() == 'bye' or message.lower().strip() == 'tschüss':
+    if user.lower().strip() == 'bye' or user.lower().strip() == 'tschüss':
 
         # Close the browser window and stop the application - BROKEN
         gr.close_all()
         exit()
 
-    _system_message: str = system_message
+    system: str = system_message
 
     # Add specific instructions based upon the verbose checkbox
     if verbose_option:
-        _system_message += " Also please show responses in both German and English."
+        system += " Also please show responses in both German and English."
 
     # Add specific instructions based upon the CEFR level
-    _system_message += f" Please use the CEFR level {proficiency_option} for vocabulary and grammar."
+    system += f" Please use the CEFR level {proficiency_option} for vocabulary and grammar."
 
-    # Prepare messages for OpenAI
-    messages = [{"role": "system", "content": _system_message}] + \
-        history + [{"role": "user", "content": message}]
-
-    # Call the OpenAI API with streaming
-    stream = openai.chat.completions.create(
-        model=model_option, messages=messages, stream=True)
-
-    # Stream the response back to the user
-    response = ""
-    for chunk in stream:
-        response += chunk.choices[0].delta.content or ''
-        yield response
+    # Call the appropriate model
+    if model_option == "gpt-4o-mini":
+        result = call_openai(system, history, user, model_option)
+        yield from result
+    elif model_option == "claude-3-5-haiku-latest":
+        result = call_anthropic(system, history, user, model_option)
+        yield from result
 
 
-def select_model(company_name: str, url: str, model: str):
+def call_openai(system: str, history, user: str, model: str):
+
+    # Initial yield to avoid Gradio timeout
     yield ""
-    prompt = f"Please generate a company brochure for {company_name}. Here is their landing page:\n"
-    # prompt += Website(url).get_contents()
-    if model == "gpt-4o-mini":
-        result = call_gpt(prompt, model)
-    elif model == "claude-3-5-haiku-latest":
-        result = call_claude(prompt, model)
-    elif model == "gemini-1.5-flash":
-        result = call_gemini(prompt, model)
-    elif model == "gemini-2.5-flash-lite":
-        result = call_gemini(prompt, model)
-    else:
-        raise ValueError("Unknown model")
-    yield from result
 
-
-def call_gpt(prompt: str, model: str):
     # Prepare messages for OpenAI
-    messages = [
-        {"role": "system", "content": system_message},
-        {"role": "user", "content": prompt}
-    ]
+    messages = [{"role": "system", "content": system}] + \
+        history + [{"role": "user", "content": user}]
 
     # Call the OpenAI API with streaming
     stream = openai.chat.completions.create(
@@ -143,28 +135,36 @@ def call_gpt(prompt: str, model: str):
         yield response
 
 
-def call_claude(prompt: str, model: str):
-    # Prepare messages for Claude
-    messages = [{"role": "user", "content": prompt}]
+def call_anthropic(system: str, history: list[tuple[str, str]], user: str, model: str) -> Generator[str, None, None]:
 
-    # Call the Claude API with streaming
-    result = claude.messages.stream(
-        model=model,
-        system=system_message,
-        messages=messages,
-        temperature=0.7,
-        max_tokens=1000
-    )
+    # Initial yield to avoid Gradio timeout
+    yield ""
 
-    # Stream the response back to the user
+    # Prepare messages for Anthropic
+    keys_to_keep = ["role", "content"]
+    history = [{k: d[k] for k in keys_to_keep if k in d} for d in history]
+    history.append({"role": "user", "content": user})
+    if len(history) > 20:
+        history.append({"role": "user", "content": "DONE"})
+
+    # Call the Anthropic API with streaming
     response = ""
-    with result as stream:
+    with claude.messages.stream(
+        model=model,
+        max_tokens=1024,
+        messages=history,
+        system=system
+    ) as stream:
         for text in stream.text_stream:
-            response += text or ""
+            response += text
             yield response
 
 
-def call_gemini(prompt: str, model: str):
+def call_google(prompt: str, model: str):
+
+    # Initial yield to avoid Gradio timeout
+    yield ""
+
     # Call the Gemini API with streaming
     gemini = google.generativeai.GenerativeModel(
         model_name=model,
@@ -172,10 +172,10 @@ def call_gemini(prompt: str, model: str):
     )
 
     # Stream the response back to the user
-    result = ""
+    response = ""
     for response in gemini.generate_content(prompt, stream=True):
-        result += response.text or ""
-        yield result
+        response += response.text or ""
+        yield response
 
 
 if __name__ == "__main__":
